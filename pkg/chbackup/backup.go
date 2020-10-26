@@ -67,7 +67,7 @@ func parseTablePatternForFreeze(tables []Table, tablePattern string) []Table {
 	return result
 }
 
-func parseTablePatternForRestoreData(tables map[string]BackupTable, tablePattern string) []BackupTable {
+func parseTablePatternForRestoreData(tables map[string]BackupTable, tablePattern string,replicDb string) []BackupTable {
 	tablePatterns := []string{"*"}
 	if tablePattern != "" {
 		tablePatterns = strings.Split(tablePattern, ",")
@@ -77,15 +77,20 @@ func parseTablePatternForRestoreData(tables map[string]BackupTable, tablePattern
 		for _, pattern := range tablePatterns {
 			tableName := fmt.Sprintf("%s.%s", t.Database, t.Name)
 			if matched, _ := filepath.Match(pattern, tableName); matched {
+				if replicDb != ""{
+					t.Database = replicDb
+				}
+
 				result = addBackupTable(result, t)
 			}
 		}
 	}
+	fmt.Println(result)
 	result.Sort()
 	return result
 }
 
-func parseSchemaPattern(metadataPath string, tablePattern string) (RestoreTables, error) {
+func parseSchemaPattern(metadataPath string, tablePattern string,replicDb string) (RestoreTables, error) {
 	regularTables := RestoreTables{}
 	distributedTables := RestoreTables{}
 	viewTables := RestoreTables{}
@@ -111,6 +116,9 @@ func parseSchemaPattern(metadataPath string, tablePattern string) (RestoreTables
 				data, err := ioutil.ReadFile(filePath)
 				if err != nil {
 					return err
+				}
+				if replicDb != "" {
+					database = replicDb
 				}
 				restoreTable := RestoreTable{
 					Database: database,
@@ -177,7 +185,7 @@ func PrintTables(config Config) error {
 	return nil
 }
 
-func restoreSchema(config Config, backupName string, tablePattern string, dropTable bool) error {
+func restoreSchema(config Config, backupName string, tablePattern string, dropTable bool,replicDb string) error {
 	if backupName == "" {
 		PrintLocalBackups(config, "all")
 		return fmt.Errorf("select backup for restore")
@@ -194,7 +202,7 @@ func restoreSchema(config Config, backupName string, tablePattern string, dropTa
 	if !info.IsDir() {
 		return fmt.Errorf("%s is not a dir", metadataPath)
 	}
-	tablesForRestore, err := parseSchemaPattern(metadataPath, tablePattern)
+	tablesForRestore, err := parseSchemaPattern(metadataPath, tablePattern, replicDb)
 	if err != nil {
 		return err
 	}
@@ -397,7 +405,7 @@ func CreateBackup(config Config, backupName, tablePattern string) error {
 		return err
 	}
 	log.Println("Copy metadata")
-	schemaList, err := parseSchemaPattern(path.Join(dataPath, "metadata"), tablePattern)
+	schemaList, err := parseSchemaPattern(path.Join(dataPath, "metadata"), tablePattern,"")
 	if err != nil {
 		return err
 	}
@@ -437,14 +445,14 @@ func CreateBackup(config Config, backupName, tablePattern string) error {
 }
 
 // Restore - restore tables matched by tablePattern from backupName
-func Restore(config Config, backupName string, tablePattern string, schemaOnly bool, dataOnly bool, dropTable bool) error {
+func Restore(config Config, backupName string, tablePattern string, schemaOnly bool, dataOnly bool, dropTable bool,partition string,replicDb string) error {
 	if schemaOnly || (schemaOnly == dataOnly) {
-		if err := restoreSchema(config, backupName, tablePattern, dropTable); err != nil {
+		if err := restoreSchema(config, backupName, tablePattern, dropTable,replicDb); err != nil {
 			return err
 		}
 	}
 	if dataOnly || (schemaOnly == dataOnly) {
-		if err := RestoreData(config, backupName, tablePattern); err != nil {
+		if err := RestoreData(config, backupName, tablePattern,replicDb); err != nil {
 			return err
 		}
 	}
@@ -452,7 +460,7 @@ func Restore(config Config, backupName string, tablePattern string, schemaOnly b
 }
 
 // RestoreData - restore data for tables matched by tablePattern from backupName
-func RestoreData(config Config, backupName string, tablePattern string) error {
+func RestoreData(config Config, backupName string, tablePattern string,replicDb string) error {
 	if backupName == "" {
 		PrintLocalBackups(config, "all")
 		return fmt.Errorf("select backup for restore")
@@ -473,7 +481,7 @@ func RestoreData(config Config, backupName string, tablePattern string) error {
 	if err != nil {
 		return err
 	}
-	restoreTables := parseTablePatternForRestoreData(allBackupTables, tablePattern)
+	restoreTables := parseTablePatternForRestoreData(allBackupTables, tablePattern,replicDb)
 	chTables, err := ch.GetTables()
 	if err != nil {
 		return err

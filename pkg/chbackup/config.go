@@ -179,6 +179,7 @@ func DefaultConfig() *Config {
 				"system.*",
 			},
 			Timeout: "5m",
+			DataPath: "/smac/data/log/clickhouse/",
 		},
 		AzureBlob: AzureBlobConfig{
 			EndpointSuffix:    "core.windows.net",

@@ -131,7 +131,7 @@ func main() {
 			Usage:     "Create schema and restore data from backup",
 			UsageText: "clickhouse-backup restore [--schema] [--data] [-t, --tables=<db>.<table>] <backup_name>",
 			Action: func(c *cli.Context) error {
-				return chbackup.Restore(*getConfig(c), c.Args().First(), c.String("t"), c.Bool("s"), c.Bool("d"), c.Bool("rm"))
+				return chbackup.Restore(*getConfig(c), c.Args().First(), c.String("t"), c.Bool("s"), c.Bool("d"), c.Bool("rm"),c.String("p"),c.String("db"))
 			},
 			Flags: append(cliapp.Flags,
 				cli.StringFlag{
@@ -152,6 +152,17 @@ func main() {
 					Name:   "rm, drop",
 					Hidden: false,
 					Usage:  "Drop table before restore",
+				},
+				cli.StringFlag{
+					Name: "partition,p",
+					Hidden: false,
+					Usage: "Restore partition",
+				},
+				cli.StringFlag{
+					Name: "db,database",
+					Hidden: false,
+					Usage: "change to another database",
+
 				},
 			),
 		},

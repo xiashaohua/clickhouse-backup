@@ -562,6 +562,8 @@ func (api *APIServer) httpRestoreHandler(w http.ResponseWriter, r *http.Request)
 	schemaOnly := false
 	dataOnly := false
 	dropTable := false
+	partition := ""
+	replicDb := ""
 
 	query := r.URL.Query()
 	if tp, exist := query["table"]; exist {
@@ -580,7 +582,7 @@ func (api *APIServer) httpRestoreHandler(w http.ResponseWriter, r *http.Request)
 		dropTable = true
 	}
 	api.status.start("restore")
-	err := Restore(api.config, vars["name"], tablePattern, schemaOnly, dataOnly, dropTable)
+	err := Restore(api.config, vars["name"], tablePattern, schemaOnly, dataOnly, dropTable,partition,replicDb)
 	api.status.stop(err)
 	if err != nil {
 		log.Printf("Download error: %+v\n", err)
